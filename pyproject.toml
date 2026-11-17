@@ -1,0 +1,104 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "shellsense"
+version = "0.1.0"
+description = "A cross-platform natural-language desktop assistant with verified safety guardrails."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+    { name = "ShellSense Contributors" }
+]
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "psutil>=6.1.0",
+    "rapidfuzz>=3.10.0",
+    "send2trash>=1.8.3",
+    "platformdirs>=4.3.0",
+    "pywebview>=5.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+    "types-psutil>=6.1.0",
+    "types-Send2Trash>=2.2.0",
+    "httpx>=0.28.0",
+]
+
+[project.scripts]
+shellsense = "shellsense.cli:main"
+shellsense-cli = "shellsense.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shellsense"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+    "S",   # flake8-bandit (security checks)
+]
+ignore = [
+    "S101", # allow assert in tests
+    "S105", # confirmation tokens are not passwords
+    "S106", # confirmation tokens are not passwords
+    "S108", # mock test targets using /tmp
+    "S110", # safe fallbacks
+    "B904", # FastAPI HTTPException chaining
+    "ARG001", # unused args in protocol implementations
+    "ARG002", # unused method args in protocol implementations
+    "E501", # line length
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["shellsense"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "send2trash",
+    "send2trash.*",
+    "pywebview",
+    "pywebview.*",
+    "platformdirs",
+    "platformdirs.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

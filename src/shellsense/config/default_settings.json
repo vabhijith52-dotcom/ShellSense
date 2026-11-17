@@ -1,0 +1,10 @@
+{
+  "allowed_roots": [],
+  "denied_paths": [],
+  "bulk_item_limit": 100,
+  "plan_expiry_seconds": 120,
+  "task_concurrency": 2,
+  "confidence_threshold": 0.7,
+  "log_max_bytes": 10485760,
+  "log_backup_count": 5
+}
