@@ -45,8 +45,9 @@ class JSBridge:
 def launch_desktop(static_dir: Path | None = None) -> None:
     """Launch the ShellSense desktop application."""
     if static_dir is None:
-        if hasattr(sys, "_MEIPASS"):
-            meipass_dist = Path(sys._MEIPASS) / "frontend" / "dist"  # type: ignore[attr-defined]
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            meipass_dist = Path(meipass) / "frontend" / "dist"
             if meipass_dist.exists():
                 static_dir = meipass_dist
         if static_dir is None:

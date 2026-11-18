@@ -8,12 +8,14 @@ from shellsense.api.schemas import (
     ChatMessageRequest,
     ChatResponse,
     ClarificationMessage,
+    ExplanationInfo,
     PlanPreviewMessage,
     RefusalMessage,
     ResultMessage,
 )
 from shellsense.executor.executor import DEFAULT_EXECUTOR
 from shellsense.models import RiskLevel
+from shellsense.nlp.context import DEFAULT_SESSION_CONTEXT
 from shellsense.nlp.rule_based import DEFAULT_PARSER
 from shellsense.nlp.schemas import Clarification, Refusal
 from shellsense.planner import DEFAULT_PLANNER
@@ -27,7 +29,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 async def send_chat_message(req: ChatMessageRequest) -> ChatResponse:
     """Process natural-language prompt through the security pipeline."""
     # 1. NLP Parse
-    parsed = DEFAULT_PARSER.parse(req.text)
+    parsed = DEFAULT_PARSER.parse(req.text, session_id="chat")
     if isinstance(parsed, Refusal):
         DEFAULT_AUDIT_LOGGER.log(
             session_id="chat",
@@ -41,6 +43,21 @@ async def send_chat_message(req: ChatMessageRequest) -> ChatResponse:
         return RefusalMessage(reason=parsed.reason)
     if isinstance(parsed, Clarification):
         return ClarificationMessage(question=parsed.question, options=parsed.options)
+
+    # Contextual explanation info for transparency
+    cmd_info = DEFAULT_SESSION_CONTEXT.get_last_parsed_command("chat")
+    understood_as = cmd_info.get("understood_as") if cmd_info else None
+    explanation = (
+        ExplanationInfo(
+            operation=cmd_info["operation"],
+            params=cmd_info.get("params", {}),
+            confidence=float(cmd_info.get("confidence", 1.0)),
+            defaults_applied=list(cmd_info.get("defaults_applied", [])),
+            resolved_scope=str(cmd_info.get("resolved_scope", "")),
+        )
+        if cmd_info
+        else None
+    )
 
     # 2. Plan creation
     try:
@@ -71,6 +88,8 @@ async def send_chat_message(req: ChatMessageRequest) -> ChatResponse:
             status=result.status.value,
             summary=summary_msg,
             errors=result.errors,
+            understood_as=understood_as,
+            explanation=explanation,
         )
 
     # 4. If MODIFY or DESTRUCTIVE: Return PlanPreview for user approval
@@ -84,4 +103,6 @@ async def send_chat_message(req: ChatMessageRequest) -> ChatResponse:
         confirmation_kind=plan.confirmation_hint.kind.value,
         confirmation_token=plan.confirmation_hint.token,
         confirmation_hint=plan.confirmation_hint.prompt_message,
+        understood_as=understood_as,
+        explanation=explanation,
     )

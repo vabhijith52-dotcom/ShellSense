@@ -29,7 +29,7 @@ from shellsense.safety.path_guard import PathGuard
 
 
 class CleanTempParams(BaseModel):
-    max_age_days: int = 7
+    max_age_days: int = 1
 
 
 class CleanTempOperation(BaseOperation):
@@ -54,6 +54,14 @@ class CleanTempOperation(BaseOperation):
     def required_capability(self) -> Capability:
         return Capability.FILES_TRASH
 
+    @property
+    def catalog_examples(self) -> tuple[str, ...]:
+        return (
+            "Delete temporary files",
+            "Clean temp",
+            "Clean temporary files",
+        )
+
     def compute_risk(self, params: dict[str, Any]) -> RiskLevel:
         return RiskLevel.DESTRUCTIVE
 
@@ -65,36 +73,48 @@ class CleanTempOperation(BaseOperation):
     ) -> Plan:
         roots = [Path(r) for r in (allowed_roots or [])]
         user_temp = Path(tempfile.gettempdir()).resolve()
+        cache_thumbs = (Path.home() / ".cache" / "thumbnails").resolve()
 
-        # Find safe temporary candidate files
+        search_dirs = [user_temp]
+        if cache_thumbs.exists():
+            search_dirs.append(cache_thumbs)
+        for r in roots:
+            if r not in search_dirs and r.exists():
+                search_dirs.append(r)
+
         candidates: list[TargetFile] = []
-        # Search permitted roots for temp-pattern files (.tmp, .log, ~$)
-        search_dirs = [user_temp] if user_temp in roots else roots
+        max_age_secs = int(params.get("max_age_days", 1)) * 86400
+        cutoff = time.time() - max_age_secs
 
         for sdir in search_dirs:
             if sdir.exists():
-                for entry in sdir.glob("*.tmp"):
-                    if entry.is_file():
-                        st = entry.stat()
-                        candidates.append(
-                            TargetFile(
-                                path=str(entry.resolve()),
-                                exists=True,
-                                is_dir=False,
-                                size_bytes=st.st_size,
-                                inode=st.st_ino,
-                                device=st.st_dev,
-                                mtime=st.st_mtime,
-                            )
-                        )
-                        if len(candidates) >= 50:
-                            break
+                try:
+                    for entry in sdir.glob("*.tmp"):
+                        if entry.is_file() and not entry.is_symlink():
+                            st = entry.stat()
+                            if st.st_mtime <= cutoff or sdir == cache_thumbs:
+                                candidates.append(
+                                    TargetFile(
+                                        path=str(entry.resolve()),
+                                        exists=True,
+                                        is_dir=False,
+                                        size_bytes=st.st_size,
+                                        inode=st.st_ino,
+                                        device=st.st_dev,
+                                        mtime=st.st_mtime,
+                                    )
+                                )
+                                if len(candidates) >= 50:
+                                    break
+                except (OSError, PermissionError):
+                    pass
 
         now = time.time()
         plan_id = f"plan-{uuid.uuid4().hex[:12]}"
         count = len(candidates)
         token = f"DELETE {count}" if count > 0 else "DELETE 0"
-        summary = f"Clean up {count} temporary files ({sum(c.size_bytes or 0 for c in candidates) / 1024:.1f} KB)"
+        total_kb = sum(c.size_bytes or 0 for c in candidates) / 1024
+        summary = f"Clean up {count} temporary files ({total_kb:.1f} KB)"
         consequences = "Temporary files will be safely moved to the Trash / Recycle Bin."
 
         plan_hash = compute_plan_hash(

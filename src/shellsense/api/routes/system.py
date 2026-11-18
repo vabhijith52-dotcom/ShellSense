@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import getpass
+from typing import Any
 
 from fastapi import APIRouter
 
@@ -13,7 +14,7 @@ router = APIRouter(tags=["system"])
 
 
 @router.get("/system/info")
-async def get_system_info():
+async def get_system_info() -> dict[str, Any]:
     adapter = get_platform_adapter()
     sample = DEFAULT_SAMPLER.sample_now()
     os_info = adapter.get_os_info()
@@ -30,6 +31,6 @@ async def get_system_info():
 
 
 @router.get("/monitor/history")
-async def get_monitor_history(range_seconds: int = 600):
+async def get_monitor_history(range_seconds: int = 600) -> dict[str, Any]:
     samples = DEFAULT_SAMPLER.ring_buffer.get_history(range_seconds=range_seconds)
     return {"samples": [s.model_dump() for s in samples]}

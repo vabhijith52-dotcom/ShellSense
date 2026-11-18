@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import psutil
 from fastapi import APIRouter, HTTPException, status
 
@@ -16,7 +18,7 @@ router = APIRouter(prefix="/processes", tags=["processes"])
 
 
 @router.get("")
-async def list_processes(limit: int = 100):
+async def list_processes(limit: int = 100) -> dict[str, Any]:
     adapter = get_platform_adapter()
     protected_pids = adapter.get_protected_pids()
     results = []
@@ -51,7 +53,7 @@ async def list_processes(limit: int = 100):
 
 
 @router.post("/plan")
-async def create_process_plan(req: ProcessPlanRequest):
+async def create_process_plan(req: ProcessPlanRequest) -> dict[str, Any]:
     """Create a Plan to terminate process(es). Does NOT terminate by itself."""
     if req.action.lower() != "terminate":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported process action.")

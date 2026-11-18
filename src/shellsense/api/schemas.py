@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -11,9 +11,19 @@ class ChatMessageRequest(BaseModel):
     text: str = Field(..., max_length=2000)
 
 
+class ExplanationInfo(BaseModel):
+    operation: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    confidence: float
+    defaults_applied: list[str] = Field(default_factory=list)
+    resolved_scope: str = ""
+
+
 class TextMessage(BaseModel):
     kind: Literal["text"] = "text"
     text: str
+    understood_as: str | None = None
+    explanation: ExplanationInfo | None = None
 
 
 class InfoTable(BaseModel):
@@ -21,6 +31,8 @@ class InfoTable(BaseModel):
     title: str
     headers: list[str]
     rows: list[list[str]]
+    understood_as: str | None = None
+    explanation: ExplanationInfo | None = None
 
 
 class ClarificationMessage(BaseModel):
@@ -40,6 +52,8 @@ class PlanPreviewMessage(BaseModel):
     confirmation_kind: str
     confirmation_token: str | None = None
     confirmation_hint: str
+    understood_as: str | None = None
+    explanation: ExplanationInfo | None = None
 
 
 class RefusalMessage(BaseModel):
@@ -52,6 +66,8 @@ class ResultMessage(BaseModel):
     status: str
     summary: str
     errors: list[str] = Field(default_factory=list)
+    understood_as: str | None = None
+    explanation: ExplanationInfo | None = None
 
 
 ChatResponse = TextMessage | InfoTable | ClarificationMessage | PlanPreviewMessage | RefusalMessage | ResultMessage

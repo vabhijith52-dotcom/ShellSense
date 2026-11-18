@@ -90,8 +90,6 @@ warn_unused_ignores = true
 module = [
     "send2trash",
     "send2trash.*",
-    "pywebview",
-    "pywebview.*",
     "platformdirs",
     "platformdirs.*",
 ]

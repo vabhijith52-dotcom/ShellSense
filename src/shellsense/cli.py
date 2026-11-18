@@ -13,6 +13,7 @@ from pathlib import Path
 from shellsense.executor.executor import DEFAULT_EXECUTOR
 from shellsense.gui.launcher import launch_desktop
 from shellsense.models import Capability, RiskLevel
+from shellsense.nlp.context import DEFAULT_SESSION_CONTEXT
 from shellsense.nlp.rule_based import DEFAULT_PARSER
 from shellsense.nlp.schemas import Clarification, Refusal
 from shellsense.planner import DEFAULT_PLANNER
@@ -22,9 +23,21 @@ from shellsense.safety.consent import PermissionGate
 from shellsense.storage.audit import DEFAULT_AUDIT_LOGGER, AuditDecision
 
 
-def handle_ask(query: str) -> int:
+def handle_ask(query: str, explain: bool = False) -> int:
     """Process a natural language query through the safety pipeline via CLI."""
-    parsed = DEFAULT_PARSER.parse(query)
+    parsed = DEFAULT_PARSER.parse(query, session_id="cli")
+
+    if explain:
+        cmd_info = DEFAULT_SESSION_CONTEXT.get_last_parsed_command("cli")
+        if cmd_info:
+            print(f"Understood as: {cmd_info.get('understood_as')}")
+            print("Explanation:")
+            print(f"  Operation: {cmd_info.get('operation')}")
+            print(f"  Confidence: {cmd_info.get('confidence', 0.0):.2f}")
+            print(f"  Parameters: {cmd_info.get('params')}")
+            print(f"  Defaults Applied: {cmd_info.get('defaults_applied')}")
+            print(f"  Resolved Scope: {cmd_info.get('resolved_scope')}")
+            print()
 
     if isinstance(parsed, Refusal):
         DEFAULT_AUDIT_LOGGER.log(
@@ -217,6 +230,11 @@ def main(argv: list[str] | None = None) -> int:
         prog="shellsense",
         description="ShellSense: Cross-platform natural-language desktop assistant.",
     )
+    parser.add_argument(
+        "--explain",
+        action="store_true",
+        help="Print detailed NLP parsing breakdown (operation, confidence, params, defaults)",
+    )
     subparsers = parser.add_subparsers(dest="command")
 
     perm_parser = subparsers.add_parser("permissions", help="Inspect and manage capability grants")
@@ -230,26 +248,34 @@ def main(argv: list[str] | None = None) -> int:
 
     ask_parser = subparsers.add_parser("ask", help="Execute a plain-English request")
     ask_parser.add_argument("query", nargs="+", help="Natural language query string")
+    ask_parser.add_argument(
+        "--explain",
+        action="store_true",
+        help="Print detailed NLP parsing breakdown (operation, confidence, params, defaults)",
+    )
 
     subparsers.add_parser("gui", help="Launch native desktop GUI window")
 
     args, unknown = parser.parse_known_args(args_list)
+
+    explain_flag = getattr(args, "explain", False) or ("--explain" in unknown)
+    clean_unknown = [u for u in unknown if u != "--explain"]
 
     if args.command == "permissions":
         return handle_permissions(args)
 
     if args.command == "ask":
         query_str = " ".join(args.query)
-        return handle_ask(query_str)
+        return handle_ask(query_str, explain=explain_flag)
 
     if args.command == "gui":
         frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
         launch_desktop(static_dir=frontend_dist if frontend_dist.exists() else None)
         return 0
 
-    if unknown:
+    if clean_unknown:
         # Direct string query shortcut: `shellsense "Show my RAM usage"`
-        return handle_ask(" ".join(unknown))
+        return handle_ask(" ".join(clean_unknown), explain=explain_flag)
 
     parser.print_help()
     return 0

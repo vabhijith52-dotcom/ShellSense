@@ -26,6 +26,14 @@ interface ChatMessage {
   options?: string[];
   status?: string;
   errors?: string[];
+  understood_as?: string;
+  explanation?: {
+    operation: string;
+    params: Record<string, any>;
+    confidence: number;
+    defaults_applied?: Record<string, any>;
+    resolved_scope?: string;
+  };
 }
 
 export const ChatScreen: React.FC<{ username?: string }> = ({ username = "" }) => {
@@ -60,6 +68,8 @@ export const ChatScreen: React.FC<{ username?: string }> = ({ username = "" }) =
           content: response.summary,
           kind: "plan_preview",
           plan: response,
+          understood_as: response.understood_as,
+          explanation: response.explanation,
         };
 
         // If DESTRUCTIVE, automatically open confirmation modal per Section 16 & mockups
@@ -89,6 +99,8 @@ export const ChatScreen: React.FC<{ username?: string }> = ({ username = "" }) =
           kind: "result",
           status: response.status,
           errors: response.errors,
+          understood_as: response.understood_as,
+          explanation: response.explanation,
         };
       } else {
         assistantMsg = {
@@ -96,6 +108,8 @@ export const ChatScreen: React.FC<{ username?: string }> = ({ username = "" }) =
           sender: "assistant",
           content: response.text || "I have processed your request.",
           kind: "text",
+          understood_as: response.understood_as,
+          explanation: response.explanation,
         };
       }
 
@@ -277,8 +291,53 @@ export const ChatScreen: React.FC<{ username?: string }> = ({ username = "" }) =
                       : "bg-surface-elevated border border-card-border shadow-card text-text-primary rounded-bl-sm"
                   }`}
                 >
+                  {/* Understood as banner (Transparency) */}
+                  {msg.sender === "assistant" && msg.understood_as && (
+                    <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-brand-indigo dark:text-brand-violet">
+                      <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>Understood as: {sanitize(msg.understood_as)}</span>
+                    </div>
+                  )}
+
                   {/* Text Content */}
                   <div>{sanitize(msg.content)}</div>
+
+                  {/* Collapsible 'How I understood this' breakdown */}
+                  {msg.sender === "assistant" && msg.explanation && (
+                    <details className="mt-3 rounded-lg border border-card-border/60 bg-surface-subtle p-2.5 text-xs transition-all">
+                      <summary className="cursor-pointer font-medium text-text-secondary hover:text-text-primary select-none flex items-center gap-1.5">
+                        <span className="text-[11px] font-semibold text-brand-indigo">How I understood this</span>
+                      </summary>
+                      <div className="mt-2 space-y-1.5 pt-1.5 border-t border-card-border/40 font-mono text-[11px] text-text-muted">
+                        <div>
+                          <span className="text-text-secondary font-sans font-medium">Operation: </span>
+                          <span className="font-semibold text-text-primary">{sanitize(msg.explanation.operation)}</span>
+                        </div>
+                        <div>
+                          <span className="text-text-secondary font-sans font-medium">Confidence: </span>
+                          <span>{Math.round(msg.explanation.confidence * 100)}%</span>
+                        </div>
+                        {msg.explanation.params && Object.keys(msg.explanation.params).length > 0 && (
+                          <div>
+                            <span className="text-text-secondary font-sans font-medium">Parameters: </span>
+                            <span>{sanitize(JSON.stringify(msg.explanation.params))}</span>
+                          </div>
+                        )}
+                        {msg.explanation.defaults_applied && Object.keys(msg.explanation.defaults_applied).length > 0 && (
+                          <div>
+                            <span className="text-text-secondary font-sans font-medium">Defaults: </span>
+                            <span>{sanitize(JSON.stringify(msg.explanation.defaults_applied))}</span>
+                          </div>
+                        )}
+                        {msg.explanation.resolved_scope && (
+                          <div>
+                            <span className="text-text-secondary font-sans font-medium">Resolved Scope: </span>
+                            <span>{sanitize(msg.explanation.resolved_scope)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </details>
+                  )}
 
                   {/* Clarification Chips */}
                   {msg.kind === "clarification" && msg.options && (

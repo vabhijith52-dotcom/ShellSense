@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 from shellsense.platform import get_platform_adapter
 
@@ -14,7 +15,7 @@ from shellsense.platform import get_platform_adapter
 class PathGuard:
     """Validates filesystem paths against allowed roots, hard denials, and escape attempts."""
 
-    def __init__(self, platform_adapter=None) -> None:
+    def __init__(self, platform_adapter: Any = None) -> None:
         self.adapter = platform_adapter or get_platform_adapter()
 
     def validate_path(

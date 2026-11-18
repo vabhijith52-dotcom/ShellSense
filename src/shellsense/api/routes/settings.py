@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter
 
 from shellsense.api.schemas import SettingsUpdateRequest
@@ -12,7 +14,7 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 
 @router.get("")
-async def get_settings():
+async def get_settings() -> dict[str, Any]:
     settings = load_settings()
     adapter = get_platform_adapter()
     return {
@@ -27,6 +29,6 @@ async def get_settings():
 
 
 @router.patch("")
-async def update_settings(req: SettingsUpdateRequest):
+async def update_settings(req: SettingsUpdateRequest) -> dict[str, Any]:
     # Non-security settings update stub
     return {"status": "updated"}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -19,7 +20,7 @@ guard = PathGuard()
 
 
 @router.get("")
-async def list_files(path: str = ""):
+async def list_files(path: str = "") -> dict[str, Any]:
     """List directory contents within granted roots."""
     roots = gate.get_granted_roots()
     if not roots:
@@ -64,7 +65,7 @@ async def list_files(path: str = ""):
 
 
 @router.post("/plan")
-async def create_file_plan(req: FilePlanRequest):
+async def create_file_plan(req: FilePlanRequest) -> dict[str, Any]:
     """Create a Plan for a file action (e.g. DELETE, MOVE, RENAME). Does NOT execute."""
     action_map = {
         "delete": "TRASH_FILES",

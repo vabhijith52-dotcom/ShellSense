@@ -6,6 +6,8 @@ The client can never send targets or parameters in an approval.
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, status
 
 from shellsense.api.schemas import ApprovePlanRequest, ResultMessage
@@ -16,7 +18,7 @@ router = APIRouter(prefix="/plans", tags=["plans"])
 
 
 @router.get("/{plan_id}")
-async def get_plan(plan_id: str):
+async def get_plan(plan_id: str) -> dict[str, Any]:
     plan = DEFAULT_PLAN_STORE.get_plan(plan_id)
     if not plan:
         raise HTTPException(
@@ -64,7 +66,7 @@ async def approve_plan(plan_id: str, req: ApprovePlanRequest) -> ResultMessage:
 
 
 @router.post("/{plan_id}/deny")
-async def deny_plan(plan_id: str):
+async def deny_plan(plan_id: str) -> dict[str, Any]:
     if DEFAULT_PLAN_STORE.deny_plan(plan_id):
         return {"status": "denied", "plan_id": plan_id}
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found.")

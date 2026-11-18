@@ -50,6 +50,14 @@ class FindDuplicatesOperation(BaseOperation):
     def required_capability(self) -> Capability:
         return Capability.FILES_READ
 
+    @property
+    def catalog_examples(self) -> tuple[str, ...]:
+        return (
+            "Find duplicate files",
+            "Duplicate files in Documents",
+            "Scan for identical files",
+        )
+
     def compute_risk(self, params: dict[str, Any]) -> RiskLevel:
         return RiskLevel.SAFE
 

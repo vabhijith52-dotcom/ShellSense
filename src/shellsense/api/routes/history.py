@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, status
 
 from shellsense.storage.history import DEFAULT_HISTORY_STORE
@@ -15,7 +17,7 @@ async def get_history(
     offset: int = 0,
     op_type: str | None = None,
     range_days: int | None = None,
-):
+) -> dict[str, Any]:
     items = DEFAULT_HISTORY_STORE.get_history(
         limit=limit,
         offset=offset,
@@ -26,7 +28,7 @@ async def get_history(
 
 
 @router.get("/{record_id}")
-async def get_history_detail(record_id: int):
+async def get_history_detail(record_id: int) -> dict[str, Any]:
     item = DEFAULT_HISTORY_STORE.get_history_item(record_id)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="History record not found.")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -15,7 +16,7 @@ gate = PermissionGate()
 
 
 @router.get("")
-async def get_permissions():
+async def get_permissions() -> dict[str, Any]:
     is_locked = gate.is_locked()
     grant = gate.get_current_grant()
     return {
@@ -28,7 +29,7 @@ async def get_permissions():
 
 
 @router.post("/grant")
-async def grant_permissions(req: GrantPermissionRequest):
+async def grant_permissions(req: GrantPermissionRequest) -> dict[str, Any]:
     """GUI first-run wizard submission.
 
     Requires live human typed phrase 'I GRANT ACCESS'.
@@ -57,6 +58,6 @@ async def grant_permissions(req: GrantPermissionRequest):
 
 
 @router.post("/revoke")
-async def revoke_permissions():
+async def revoke_permissions() -> dict[str, Any]:
     gate.revoke()
     return {"status": "revoked", "is_locked": True}

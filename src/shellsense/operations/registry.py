@@ -49,6 +49,11 @@ class BaseOperation(ABC):
         """The capability grant required to plan or execute this operation."""
         ...
 
+    @property
+    def catalog_examples(self) -> tuple[str, ...]:
+        """Catalog examples of natural language requests for this operation."""
+        return ()
+
     @abstractmethod
     def compute_risk(self, params: dict[str, Any]) -> RiskLevel:
         """Compute the fail-closed risk level based on parameters."""
@@ -103,6 +108,8 @@ class OperationRegistry:
             raise ValueError(f"Operation '{operation.name}' params_schema must be a Pydantic model.")
         if not isinstance(operation.required_capability, Capability):
             raise ValueError(f"Operation '{operation.name}' required_capability must be a Capability enum.")
+        if not hasattr(operation, "catalog_examples") or not isinstance(operation.catalog_examples, (tuple, list)):
+            raise ValueError(f"Operation '{operation.name}' must provide catalog_examples.")
 
         op_name = operation.name.upper()
         if op_name in self._operations:
@@ -120,6 +127,9 @@ class OperationRegistry:
 
     def list_operations(self) -> list[str]:
         return sorted(self._operations.keys())
+
+    def list_intents(self) -> list[str]:
+        return sorted(self._intent_map.keys())
 
 
 # Singleton operation registry

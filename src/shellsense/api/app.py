@@ -56,7 +56,7 @@ def create_app(
 
     # WebSocket events endpoint
     @app.websocket("/api/v1/events")
-    async def websocket_events(websocket: WebSocket):
+    async def websocket_events(websocket: WebSocket) -> None:
         auth = websocket.headers.get("authorization")
         if not security.verify_token(auth):
             await websocket.close(code=1008)
@@ -73,7 +73,7 @@ def create_app(
     # Custom index handlers injecting per-launch loopback token meta tag
     @app.get("/", response_class=HTMLResponse)
     @app.get("/index.html", response_class=HTMLResponse)
-    async def get_index():
+    async def get_index() -> HTMLResponse:
         if static_dir and static_dir.exists():
             index_path = static_dir / "index.html"
             if index_path.exists():
