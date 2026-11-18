@@ -67,23 +67,62 @@ def compute_manifest_hash(
     return hashlib.sha256(canonical).hexdigest()
 
 
-def is_inside_git_repo(path: Path) -> bool:
-    """Check if a path is located inside a git repository working tree."""
-    current = path.resolve()
-    while current != current.parent:
-        if (current / ".git").exists():
-            return True
-        current = current.parent
-    return False
+def get_repo_root() -> Path | None:
+    """Find the root directory of the ShellSense repository if running from source."""
+    try:
+        current = Path(__file__).resolve()
+        for p in current.parents:
+            if (p / "pyproject.toml").exists() and ((p / "src" / "shellsense").exists() or (p / ".git").exists()):
+                return p
+    except Exception:
+        pass
+    return None
+
+
+def is_inside_repo(path: Path, repo_root: Path | None = None) -> bool:
+    """Check if a path is located inside the application's own repository root.
+
+    Invariant 12: Consent lives outside the repo, per user and per machine,
+    and is never shipped or loaded from inside the application repository.
+    """
+    target_root = repo_root or get_repo_root()
+    if target_root is None:
+        return False
+
+    try:
+        c = path.resolve()
+        p = target_root.resolve()
+
+        # Case-insensitive comparison on Windows
+        if os.name == "nt" or sys.platform == "win32":
+            c_parts = [part.lower() for part in c.parts]
+            p_parts = [part.lower() for part in p.parts]
+            return len(c_parts) >= len(p_parts) and c_parts[:len(p_parts)] == p_parts
+
+        c.relative_to(p)
+        return True
+    except (ValueError, Exception):
+        return False
+
+
+def is_inside_git_repo(path: Path, repo_root: Path | None = None) -> bool:
+    """Check whether a path is located inside the ShellSense repository root.
+
+    Maintained for backwards-compatibility; checks whether path is a subpath of
+    the application's own repository root rather than blanket-blocking any path
+    that happens to have a .git folder in its parent tree.
+    """
+    return is_inside_repo(path, repo_root=repo_root)
 
 
 class PermissionGate:
     """Gatekeeper enforcing locked-by-default capability access."""
 
-    def __init__(self, config_dir: Path | None = None) -> None:
+    def __init__(self, config_dir: Path | None = None, repo_root: Path | None = None) -> None:
         default_dir = platformdirs.user_config_dir("shellsense", appauthor=False)
         self.config_dir = config_dir or Path(default_dir)
         self.consent_file = self.config_dir / "consent.json"
+        self.repo_root = repo_root or get_repo_root()
         self._cached_grant: ConsentRecord | None = None
         self._last_loaded: float = 0.0
 
@@ -97,8 +136,8 @@ class PermissionGate:
         if not self.consent_file.exists():
             return None
 
-        # Invariant 12: Reject consent file if inside a git repository
-        if is_inside_git_repo(self.consent_file):
+        # Invariant 12: Reject consent file if inside the ShellSense repository
+        if is_inside_repo(self.consent_file, repo_root=self.repo_root):
             return None
 
         try:
@@ -172,9 +211,9 @@ class PermissionGate:
                 "Interactive TTY required to grant permissions without GUI wizard."
             )
 
-        # Invariant 12: Ensure config dir is not inside a git repo
-        if is_inside_git_repo(self.consent_file):
-            raise PermissionError("Consent file cannot be located within a git repository.")
+        # Invariant 12: Ensure config dir is not inside the ShellSense repository
+        if is_inside_repo(self.consent_file, repo_root=self.repo_root):
+            raise PermissionError("Consent file cannot be located within the ShellSense repository.")
 
         self.config_dir.mkdir(parents=True, exist_ok=True)
         # Enforce owner-only directory permissions on POSIX

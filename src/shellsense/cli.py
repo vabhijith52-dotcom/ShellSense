@@ -179,7 +179,7 @@ def handle_permissions(args: argparse.Namespace) -> int:
             print("\nEnter folder roots that ShellSense is permitted to access.")
             print("(Do not choose your entire home directory. Choose specific folders).")
             while True:
-                path_input = input("Enter allowed folder path (or press Enter to finish): ").strip()
+                path_input = input("Enter allowed folder path (or press Enter to finish): ").strip().strip('"').strip("'")
                 if not path_input:
                     break
                 p = Path(path_input).expanduser().resolve()

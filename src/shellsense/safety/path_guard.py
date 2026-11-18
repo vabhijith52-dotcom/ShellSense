@@ -6,6 +6,7 @@ Enforces Section 8 path safety, hard-coded OS denials, and symlink protection.
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -64,7 +65,7 @@ class PathGuard:
 
             for denied in hard_denies:
                 try:
-                    if resolved == denied:
+                    if self._is_same_path(resolved, denied):
                         return False, f"Access to system-protected path '{denied}' is forbidden."
                     if denied not in exact_only_denies and self._is_subpath(resolved, denied):
                         return False, f"Access to system-protected path '{denied}' is forbidden."
@@ -75,7 +76,7 @@ class PathGuard:
             if settings_denies:
                 for denied in settings_denies:
                     denied_resolved = Path(denied).expanduser().resolve()
-                    if resolved == denied_resolved or self._is_subpath(resolved, denied_resolved):
+                    if self._is_same_path(resolved, denied_resolved) or self._is_subpath(resolved, denied_resolved):
                         return (
                             False,
                             f"Access to configured denied path '{denied_resolved}' is forbidden.",
@@ -88,7 +89,7 @@ class PathGuard:
             inside_allowed = False
             for root in allowed_roots:
                 root_resolved = Path(root).expanduser().resolve()
-                if resolved == root_resolved or self._is_subpath(resolved, root_resolved):
+                if self._is_same_path(resolved, root_resolved) or self._is_subpath(resolved, root_resolved):
                     inside_allowed = True
                     break
 
@@ -102,11 +103,19 @@ class PathGuard:
             return False, f"Path evaluation failed: {e}"
 
     @staticmethod
+    def _is_same_path(p1: Path, p2: Path) -> bool:
+        """Check if two paths are identical (case-insensitive on Windows)."""
+        if os.name == "nt" or sys.platform == "win32":
+            return [part.lower() for part in p1.parts] == [part.lower() for part in p2.parts]
+        return p1 == p2
+
+    @staticmethod
     def _is_subpath(target: Path, parent: Path) -> bool:
         """Check if target is a subpath of parent (case-insensitive on Windows)."""
         try:
-            target_parts = [p.lower() if os.name == "nt" else p for p in target.parts]
-            parent_parts = [p.lower() if os.name == "nt" else p for p in parent.parts]
+            is_win = os.name == "nt" or sys.platform == "win32"
+            target_parts = [p.lower() if is_win else p for p in target.parts]
+            parent_parts = [p.lower() if is_win else p for p in parent.parts]
 
             if len(target_parts) <= len(parent_parts):
                 return False

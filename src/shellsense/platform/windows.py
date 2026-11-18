@@ -105,6 +105,8 @@ class WindowsAdapter(PlatformAdapter):
         try:
             proc = psutil.Process(pid)
             proc_username = proc.username()
+            if not proc_username:
+                return False
             # Windows usernames often come as DOMAIN\User
             current_user = getpass.getuser().lower()
             return proc_username.lower().endswith(current_user)
